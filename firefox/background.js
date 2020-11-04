@@ -1,15 +1,11 @@
 /* globals webext */
 'use strict';
 
-var whitelist = [];
+let whitelist = [];
 webext.storage.get({whitelist}).then(prefs => whitelist = prefs.whitelist);
 webext.storage.on('changed', prefs => whitelist = prefs.whitelist.newValue).if(prefs => prefs.whitelist);
 
-var notify = e => webext.notifications.create({
-  message: e.message || e
-});
-
-var button = {};
+const button = {};
 button.update = msg => {
   button.cache.push(`${(new Date()).toLocaleTimeString()} ${msg}`);
   button.cache = button.cache.slice(-5);
@@ -47,13 +43,15 @@ button.enabled = (bol, mode) => {
   }
 };
 
-var session = ({cookie}) => {
-  const {name, domain} = cookie;
+const session = ({cookie}) => {
+  const {name, secure} = cookie;
+  const domain = cookie.domain.replace(/^\./, '');
+
   if (whitelist.indexOf(domain) !== -1) {
-    return console.log('domain is whitelisted');
+    return; // console.log('domain is whitelisted');
   }
 
-  const url = 'http://' + domain;
+  const url = (secure ? 'https://' : 'http://') + domain;
 
   webext.cookies.remove({
     url,
@@ -62,12 +60,13 @@ var session = ({cookie}) => {
     cookie.url = url;
     // convert to session cookie
     delete cookie.expirationDate;
-    webext.cookies.set(cookie);
+
+    webext.cookies.set(cookie).catch(e => console.warn(e));
     button.update(`"${name}" on ${domain} is modified`);
   });
 };
 
-var tabs = {
+const tabs = {
   cache: {}
 };
 tabs.onRemoved = tabId => {
@@ -76,12 +75,12 @@ tabs.onRemoved = tabId => {
     const {origin, hostname} = new URL(url);
     delete tabs.cache[tabId];
     if (whitelist.indexOf(hostname) !== -1) {
-      return console.log('domain is whitelisted');
+      return; // console.log('domain is whitelisted');
     }
 
     if (Object.values(tabs.cache).some(s => s.startsWith(origin))) {
       // do not delete cookies if still there is a tab with the same origin
-      console.log('skipped; there are some tabs with the same origin');
+      // console.log('skipped; there are some tabs with the same origin');
       return;
     }
     webext.cookies.getAll({
@@ -98,7 +97,7 @@ tabs.onRemoved = tabId => {
 };
 tabs.onUpdated = (tabId, changeInfo) => tabs.cache[tabId] = changeInfo.url;
 
-var setup = () => webext.storage.get({
+const setup = () => webext.storage.get({
   enabled: true,
   mode: 'tabs' // mode: session, tabs
 }).then(({mode, enabled}) => {
@@ -108,18 +107,18 @@ var setup = () => webext.storage.get({
     webext.tabs.off('removed', tabs.onRemoved);
     webext.tabs.off('updated', tabs.onUpdated);
 
-    console.log('all monitors are disabled');
+    // console.log('all monitors are disabled');
     return;
   }
   if (mode === 'session') {
-    console.log('session mode');
+    // console.log('session mode');
     webext.cookies.off('changed', session);
     webext.cookies.on('changed', session)
       // do not get called if cookie is removed or if cookie is session only
       .if(({cookie, removed}) => removed === false && cookie.session === false);
   }
   else {
-    console.log('tab-close mode');
+    // console.log('tab-close mode');
     // remove chrome.cookies.onChanged listener when it is not needed
     webext.cookies.off('changed', session);
 

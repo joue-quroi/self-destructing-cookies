@@ -11,14 +11,15 @@
     }
   </style>
   <body>
-    <span>Comma separated list of hostnames that this extension is not supposed to modify (convert cookies to session-only mode for "session" mode) nor remove cookies (remove them when tab is closed for "tabs" mode)</span>
+    <span>A comma-separated list of hostnames that this extension is not supposed to modify (convert cookies to the session-only mode for "session" mode) nor remove cookies (remove them when the tab is closed on the "tabs" mode)</span>
     <p>
       <textarea id="whitelist"></textarea>
     </p>
 
     <p>
-      <input type="button" value="Save" id="save">
-      <span id="info"></span>
+      <input type="button" value="Support Development" id="support">
+      <input type="button" value="Reset" id="reset"> - <input type="button" value="Save" id="save">
+      <span id="toast"></span>
     </p>
 
     <script src="/webext/utils/EventEmitter.js",></script>

@@ -1,8 +1,11 @@
-/* globals webext, notify */
+/* globals webext */
 'use strict';
 
-// context-menu
+const notify = e => webext.notifications.create({
+  message: e.message || e
+});
 
+// context-menu
 webext.runtime.on('start-up', () => {
   webext.storage.get({
     mode: 'tabs'

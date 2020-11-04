@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Self-Destructing Cookies",
   "description": "Delete cookies when browser is closed or once the tab is closed to prevent tracking",
 
@@ -19,16 +19,10 @@
     "48": "data/icons/48.png",
     "64": "data/icons/64.png",
     "128": "data/icons/128.png",
-    "256": "data/icons/256.png"
+    "256": "data/icons/256.png",
+    "512": "data/icons/512.png"
   },
-  "browser_action": {
-    "default_icon": {
-      "16": "data/icons/16.png",
-      "32": "data/icons/32.png",
-      "48": "data/icons/48.png",
-      "64": "data/icons/64.png"
-    }
-  },
+  "browser_action": {},
 
   "background": {
     "scripts": [
@@ -48,5 +42,12 @@
   "options_ui": {
     "page": "data/options/index.html",
     "chrome_style": true
+  },
+  "homepage_url": "http://add0n.com/self-destructing-cookies.html",
+  "applications": {
+    "gecko": {
+      "id": "{ff257424-87c5-46d1-bebd-f45cc8d2a4bf}",
+      "strict_min_version": "52.0"
+    }
   }
 }
