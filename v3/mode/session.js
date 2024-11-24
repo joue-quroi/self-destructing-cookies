@@ -17,7 +17,7 @@ const session = o => {
     }, prefs => {
       cookie.url = (cookie.secure ? 'https://' : 'http://') + domain;
       if (self.match(prefs.exceptions, cookie.url)) {
-        console.log('session mode skipped for ' + domain);
+        console.info('session mode skipped for ' + domain);
         return;
       }
 

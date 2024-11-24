@@ -1,23 +1,26 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Options :: Self-Destructing Cookies</title>
-    <link rel="stylesheet" type="text/css" href="index.css">
-  </head>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Options Page :: Self-Destructing Cookies</title>
+  <link rel="stylesheet" type="text/css" href="index.css">
+</head>
 
-  <body>
-    <span>A comma-separated list of <a data-href="faq7" target="about:blank">hostnames that this extension</a> is not supposed to modify (convert cookies to the session-only mode for "session" mode) nor remove cookies (remove them when the tab is closed on the "tabs" mode). Read the FAQs page for advance usage.</span>
-    <p>
-      <textarea id="exceptions" rows="20"></textarea>
-    </p>
+<body>
+  <span>A comma-separated list of <a data-href="faq7" target="about:blank">hostnames that this extension</a> should not modify (convert cookies to session-only mode in "session" mode) or delete cookies (remove them when the tab is closed in "tabs" mode). For advanced usage, please refer to the FAQs page.</span>
+  <p>
+    <textarea id="exceptions" rows="20" placeholder="e.g.: example.com, google.com"></textarea>
+  </p>
 
-    <p>
-      <input type="button" value="Support Development" id="support">
-      <input type="button" value="Factory Reset" id="reset"> - <input type="button" value="Save Options" id="save">
-      <span id="toast"></span>
-    </p>
-
-    <script src="index.js"></script>
-  </body>
+  <p>
+    <input type="button" value="Support Development" id="support">
+    <input type="button" value="Factory Reset" id="reset">
+  </p>
+  <p>
+    <input type="button" value="Save Options" id="save">
+    <span id="toast"></span>
+  </p>
+  <script src="index.js"></script>
+</body>
 </html>

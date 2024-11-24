@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "name": "Self-Destructing Cookies",
   "description": "Delete cookies when browser is closed or once the tab is closed to prevent tracking",
   "permissions": [
@@ -13,26 +13,35 @@
     "*://*/*"
   ],
   "icons": {
-    "16": "data/icons/16.png",
-    "32": "data/icons/32.png",
-    "48": "data/icons/48.png",
-    "64": "data/icons/64.png",
-    "128": "data/icons/128.png",
-    "256": "data/icons/256.png",
-    "512": "data/icons/512.png"
+    "16": "/data/icons/16.png",
+    "32": "/data/icons/32.png",
+    "48": "/data/icons/48.png",
+    "64": "/data/icons/64.png",
+    "128": "/data/icons/128.png",
+    "256": "/data/icons/256.png",
+    "512": "/data/icons/512.png"
   },
   "action": {},
   "background": {
-    "service_worker": "worker.js"
+    "service_worker": "worker.js",
+    "scripts": [
+      "mode/tab.js",
+      "mode/session.js",
+      "worker.js"
+    ]
   },
   "options_ui": {
-    "page": "data/options/index.html",
+    "page": "/data/options/index.html",
     "open_in_tab": true
   },
   "homepage_url": "https://add0n.com/self-destructing-cookies.html",
   "commands": {
-    "_execute_action": {
-      "description": "Press the action button"
+    "_execute_action": {}
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{ff257424-87c5-46d1-bebd-f45cc8d2a4bf}",
+      "strict_min_version": "128.0"
     }
   }
 }

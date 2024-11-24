@@ -5,49 +5,55 @@ const collect = () => chrome.tabs.query({}, tabs => chrome.storage.session.set(t
 
 const tabs = {};
 tabs.onRemoved = (id, removeInfo, href) => {
-  const next = href => {
-    if (href.startsWith('http')) {
+  const next = async href => {
+    if (href.startsWith('http') === false) {
+      return;
+    }
+    try {
+      const {origin, hostname} = new URL(href);
+      const prefs = await chrome.storage.local.get({
+        mode: 'tabs', // mode: session, tabs
+        enabled: true,
+        exceptions: []
+      });
       try {
-        const {origin, hostname} = new URL(href);
-        chrome.storage.local.get({
-          mode: 'tabs', // mode: session, tabs
-          enabled: true,
-          exceptions: []
-        }, prefs => {
-          try {
-            chrome.tabs.query({
-              url: origin + '/*'
-            }, tabs => {
-              if (tabs.length === 0) {
-                if (self.match(prefs.exceptions, href)) {
-                  console.log('tabs mode skipped for ' + origin);
-                  return;
-                }
-                if (prefs.enabled && prefs.mode === 'tabs') {
-                  chrome.cookies.getAll({
-                    url: href
-                  }).then(cookies => {
-                    if (cookies.length) {
-                      const names = [];
-                      for (const c of cookies) {
-                        names.push(c.name);
-                        chrome.cookies.remove({
-                          name: c.name,
-                          url: origin + '/*'
-                        });
-                      }
-                      self.button.print('Latest Removed Cookies for ' + hostname + ':\n\n' + names.join(', '));
-                    }
-                  });
-                }
-              }
-            });
+        // Firefox calls the "chrome.tabs.onRemoved.addListener" before the tab is closed
+        if (removeInfo) {
+          if (/Firefox/.test(navigator.userAgent)) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
-          catch (e) {}
+        }
+
+        const tabs = await chrome.tabs.query({
+          url: origin + '/*'
         });
+
+        if (tabs.length === 0) {
+          if (self.match(prefs.exceptions, href)) {
+            console.log('tabs mode skipped for ' + origin);
+            return;
+          }
+          if (prefs.enabled && prefs.mode === 'tabs') {
+            const cookies = await chrome.cookies.getAll({
+              url: href
+            });
+            if (cookies.length) {
+              const names = [];
+              for (const c of cookies) {
+                names.push(c.name);
+                chrome.cookies.remove({
+                  name: c.name,
+                  url: origin + '/*'
+                });
+              }
+              self.button.print('Latest Removed Cookies for ' + hostname + ':\n\n' + names.join(', '));
+            }
+          }
+        }
       }
       catch (e) {}
     }
+    catch (e) {}
   };
   if (href) {
     next(href);

@@ -1,17 +1,18 @@
 /* global importScripts, URLPattern */
 
-importScripts('mode/tab.js', 'mode/session.js');
+if (typeof importScripts !== 'undefined') {
+  importScripts('mode/tab.js', 'mode/session.js');
+}
 
 const notify = e => chrome.notifications.create({
   type: 'basic',
   iconUrl: '/data/icons/48.png',
   title: chrome.runtime.getManifest().name,
   message: e.message || e
-});
+}, id => setTimeout(chrome.notifications.clear, 5000, id));
 
 self.button = {
   print(title, tabId) {
-    console.log(title);
     const o = {
       title: title + '\n\n' + (new Date())
     };
@@ -24,9 +25,9 @@ self.button = {
   icon(type) {
     chrome.action.setIcon({
       path: {
-        16: 'data/icons/' + type + '/16.png',
-        32: 'data/icons/' + type + '/32.png',
-        48: 'data/icons/' + type + '/48.png'
+        16: '/data/icons/' + type + '/16.png',
+        32: '/data/icons/' + type + '/32.png',
+        48: '/data/icons/' + type + '/48.png'
       }
     });
   }
@@ -50,34 +51,41 @@ self.match = (list, href) => {
 };
 
 /* context menu */
-const context = () => {
-  chrome.storage.local.get({
-    mode: 'tabs'
-  }, prefs => {
-    chrome.contextMenus.create({
-      id: 'session',
-      title: 'Destroy cookies when browser is closed',
-      contexts: ['action'],
-      type: 'radio',
-      checked: prefs.mode === 'session'
+{
+  const once = () => {
+    if (once.done) {
+      return;
+    }
+    once.done = true;
+
+    chrome.storage.local.get({
+      mode: 'tabs'
+    }, prefs => {
+      chrome.contextMenus.create({
+        id: 'session',
+        title: 'Destroy cookies when browser is closed',
+        contexts: ['action'],
+        type: 'radio',
+        checked: prefs.mode === 'session'
+      });
+      chrome.contextMenus.create({
+        id: 'tabs',
+        title: 'Destroy cookies when tab is closed',
+        contexts: ['action'],
+        type: 'radio',
+        checked: prefs.mode === 'tabs'
+      });
+      chrome.contextMenus.create({
+        id: 'exception-list',
+        title: 'Add/Remove this hostname to/from exception list',
+        contexts: ['action'],
+        documentUrlPatterns: ['*://*/*']
+      });
     });
-    chrome.contextMenus.create({
-      id: 'tabs',
-      title: 'Destroy cookies when tab is closed',
-      contexts: ['action'],
-      type: 'radio',
-      checked: prefs.mode === 'tabs'
-    });
-    chrome.contextMenus.create({
-      id: 'exception-list',
-      title: 'Add/Remove this hostname to/from exception list',
-      contexts: ['action'],
-      documentUrlPatterns: ['*://*/*']
-    });
-  });
-};
-chrome.runtime.onStartup.addListener(context);
-chrome.runtime.onInstalled.addListener(context);
+  };
+  chrome.runtime.onStartup.addListener(once);
+  chrome.runtime.onInstalled.addListener(once);
+}
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'tabs' || info.menuItemId === 'session') {
@@ -146,8 +154,7 @@ chrome.action.onClicked.addListener(() => chrome.storage.local.get({
 {
   const {management, runtime: {onInstalled, setUninstallURL, getManifest}, storage, tabs} = chrome;
   if (navigator.webdriver !== true) {
-    const page = getManifest().homepage_url;
-    const {name, version} = getManifest();
+    const {homepage_url: page, name, version} = getManifest();
     onInstalled.addListener(({reason, previousVersion}) => {
       management.getSelf(({installType}) => installType === 'normal' && storage.local.get({
         'faqs': true,
@@ -156,7 +163,7 @@ chrome.action.onClicked.addListener(() => chrome.storage.local.get({
         if (reason === 'install' || (prefs.faqs && reason === 'update')) {
           const doUpdate = (Date.now() - prefs['last-update']) / 1000 / 60 / 60 / 24 > 45;
           if (doUpdate && previousVersion !== version) {
-            tabs.query({active: true, currentWindow: true}, tbs => tabs.create({
+            tabs.query({active: true, lastFocusedWindow: true}, tbs => tabs.create({
               url: page + '?version=' + version + (previousVersion ? '&p=' + previousVersion : '') + '&type=' + reason,
               active: reason === 'install',
               ...(tbs && tbs.length && {index: tbs[0].index + 1})
