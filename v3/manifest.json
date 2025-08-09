@@ -27,6 +27,7 @@
     "scripts": [
       "mode/tab.js",
       "mode/session.js",
+      "tld.js",
       "worker.js"
     ]
   },

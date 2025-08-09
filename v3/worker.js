@@ -1,7 +1,7 @@
-/* global importScripts, URLPattern */
+/* global importScripts, URLPattern, tldjs */
 
 if (typeof importScripts !== 'undefined') {
-  importScripts('mode/tab.js', 'mode/session.js');
+  importScripts('mode/tab.js', 'mode/session.js', 'tld.js');
 }
 
 const notify = e => chrome.notifications.create({
@@ -79,6 +79,7 @@ self.match = (list, href) => {
       const pattern = new URLPattern(s.startsWith('{') ? JSON.parse(s) : {
         hostname: s
       });
+      console.log(pattern, href, pattern.test(href));
       if (pattern.test(href)) {
         return true;
       }
@@ -136,9 +137,23 @@ self.match = (list, href) => {
       });
       chrome.contextMenus.create({
         id: 'exception-list',
-        title: 'Add/Remove this hostname to/from exception list',
+        title: 'Exception list',
         contexts: ['action'],
         documentUrlPatterns: ['*://*/*']
+      });
+      chrome.contextMenus.create({
+        id: 'exception-list-hostname',
+        title: 'Add or remove this hostname from the exception list',
+        contexts: ['action'],
+        documentUrlPatterns: ['*://*/*'],
+        parentId: 'exception-list'
+      });
+      chrome.contextMenus.create({
+        id: 'exception-list-domain',
+        title: 'Add or remove this domain and its subdomains from the exception list',
+        contexts: ['action'],
+        documentUrlPatterns: ['*://*/*'],
+        parentId: 'exception-list'
       });
     });
   };
@@ -194,6 +209,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           console.error(`Failed to delete cookie: "${cookie.name}" for "${cookieUrl}". `, e);
         }
       }
+      console.log(n);
       notify('Total number of deleted cookies: ' + n);
     }).catch(e => {
       console.error(e);
@@ -205,27 +221,44 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       mode: cmd
     });
   }
-  else if (cmd === 'exception-list') {
+  else if (cmd.startsWith('exception-list-')) {
     if (tab.url.startsWith('http')) {
       try {
-        const {hostname} = new URL(tab.url);
+        const terms = [];
+        terms.push((new URL(tab.url)).hostname);
+        if (cmd === 'exception-list-domain') {
+          terms.push(`{"hostname": "*.${tldjs.getDomain(tab.url)}"}`);
+        }
 
         chrome.storage.local.get({
           exceptions: []
         }, prefs => {
-          const n = prefs.exceptions.indexOf(hostname);
-          if (n === -1) {
-            prefs.exceptions.push(hostname);
-            notify(`"${hostname}" is added to the exception list`);
+          const ns = [];
+          for (const term of terms) {
+            const n = prefs.exceptions.indexOf(term);
+            if (n !== -1) {
+              ns.push(n);
+            }
+          }
+          if (ns.length === 0) {
+            prefs.exceptions.push(...terms);
+            notify(`"${terms.join(', ')}" are added to the exception list`);
           }
           else {
-            prefs.exceptions.splice(n, 1);
-            notify(`"${hostname}" is removed from the exception list`);
+            ns.reverse();
+            for (const n of ns) {
+              prefs.exceptions.splice(n, 1);
+            }
+
+            notify(`"${terms.join(', ')}" are removed from the exception list`);
           }
           chrome.storage.local.set(prefs);
         });
       }
-      catch (e) {}
+      catch (e) {
+        console.error(e);
+        notify(e);
+      }
     }
     else {
       notify(tab.url + ' is not supported');

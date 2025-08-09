@@ -37,16 +37,33 @@ tabs.onRemoved = (id, removeInfo, href) => {
             const cookies = await chrome.cookies.getAll({
               url: href
             });
+
             if (cookies.length) {
               const names = [];
-              for (const c of cookies) {
-                names.push(c.name);
-                chrome.cookies.remove({
-                  name: c.name,
-                  url: origin + '/*'
-                });
+
+              for (const cookie of cookies) {
+                const cookieUrl = (cookie.secure ? 'https://' : 'http://') +
+                  cookie.domain.replace(/^\./, '') + cookie.path;
+                try {
+                  const details = await chrome.cookies.remove({
+                    url: cookieUrl,
+                    name: cookie.name,
+                    storeId: cookie.storeId
+                  });
+                  if (details) {
+                    names.push(cookie.name);
+                  }
+                  else {
+                    console.info(`Failed to delete cookie: "${cookie.name}" for "${cookieUrl}". `);
+                  }
+                }
+                catch (e) {
+                  console.error(`Failed to delete cookie: "${cookie.name}" for "${cookieUrl}". `, e);
+                }
               }
-              self.button.print('Latest Removed Cookies for ' + hostname + ':\n\n' + names.join(', '));
+              if (names.length) {
+                self.button.print('Latest Removed Cookies for ' + hostname + ':\n\n' + names.join(', '));
+              }
             }
           }
         }
