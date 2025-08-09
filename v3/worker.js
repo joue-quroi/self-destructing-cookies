@@ -11,6 +11,46 @@ const notify = e => chrome.notifications.create({
   message: e.message || e
 }, id => setTimeout(chrome.notifications.clear, 5000, id));
 
+const askUserConfirmation = message => new Promise(resolve => {
+  const notifId = 'confirm_' + Date.now();
+
+  chrome.notifications.create(notifId, {
+    type: 'basic',
+    iconUrl: 'data/icons/48.png',
+    title: 'Confirm Action',
+    message,
+    priority: 2
+  });
+
+  const handleClick = id => {
+    if (id === notifId) {
+      cleanup();
+      chrome.notifications.clear(id);
+      resolve(true);
+    }
+  };
+
+  const handleClose = id => {
+    if (id === notifId) {
+      cleanup();
+      resolve(false);
+    }
+  };
+
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+    chrome.notifications.onClicked.removeListener(handleClick);
+    chrome.notifications.onClosed.removeListener(handleClose);
+  };
+
+  chrome.notifications.onClicked.addListener(handleClick);
+  chrome.notifications.onClosed.addListener(handleClose);
+
+  // Auto-timeout in 5 seconds
+  const timeoutId = setTimeout(() => chrome.notifications.clear(notifId), 10000);
+});
+
+
 self.button = {
   print(title, tabId) {
     const o = {
@@ -76,6 +116,25 @@ self.match = (list, href) => {
         checked: prefs.mode === 'tabs'
       });
       chrome.contextMenus.create({
+        id: 'delete',
+        title: 'Delete cookies',
+        contexts: ['action']
+      });
+      chrome.contextMenus.create({
+        id: 'clear-site',
+        title: `Delete cookies for this site now`,
+        contexts: ['action'],
+        documentUrlPatterns: ['*://*/*'],
+        parentId: 'delete'
+      });
+      chrome.contextMenus.create({
+        id: 'clear-all',
+        title: `Delete cookies for all websites now`,
+        contexts: ['action'],
+        documentUrlPatterns: ['*://*/*'],
+        parentId: 'delete'
+      });
+      chrome.contextMenus.create({
         id: 'exception-list',
         title: 'Add/Remove this hostname to/from exception list',
         contexts: ['action'],
@@ -88,12 +147,65 @@ self.match = (list, href) => {
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'tabs' || info.menuItemId === 'session') {
-    chrome.storage.local.set({
-      mode: info.menuItemId
+  const cmd = info.menuItemId;
+  if (cmd.startsWith('clear-')) {
+    if (cmd === 'clear-site') {
+      if (!tab || !tab.url || tab.url.startsWith('http') === false) {
+        return notify('NOT_VALID_TAB_URL');
+      }
+    }
+
+    chrome.storage.local.get({
+      'confirm-delete': true
+    }).then(async prefs => {
+      if (prefs['confirm-delete']) {
+        const msg = `This will delete all cookies for ${cmd === 'clear-site' ? '"this" website' : '"all" websites'}.
+
+    Click to proceed. Ignore to cancel.`;
+        const b = await askUserConfirmation(msg);
+        if (!b) {
+          return;
+        }
+      }
+      const options = cmd === 'clear-site' ? {
+        domain: (new URL(tab.url)).hostname
+      } : {};
+      const cookies = await chrome.cookies.getAll(options);
+      if (!cookies || cookies.length === 0) {
+        throw Error('NO_COOKIE_FOUND');
+      }
+      let n = 0;
+      for (const cookie of cookies) {
+        const cookieUrl = (cookie.secure ? 'https://' : 'http://') + cookie.domain.replace(/^\./, '') + cookie.path;
+        try {
+          const details = await chrome.cookies.remove({
+            url: cookieUrl,
+            name: cookie.name,
+            storeId: cookie.storeId
+          });
+          if (details) {
+            n += 1;
+          }
+          else {
+            throw Error('EMPTY_REPLY');
+          }
+        }
+        catch (e) {
+          console.error(`Failed to delete cookie: "${cookie.name}" for "${cookieUrl}". `, e);
+        }
+      }
+      notify('Total number of deleted cookies: ' + n);
+    }).catch(e => {
+      console.error(e);
+      setTimeout(() => notify(e), 1000);
     });
   }
-  else if (info.menuItemId === 'exception-list') {
+  else if (cmd === 'tabs' || cmd === 'session') {
+    chrome.storage.local.set({
+      mode: cmd
+    });
+  }
+  else if (cmd === 'exception-list') {
     if (tab.url.startsWith('http')) {
       try {
         const {hostname} = new URL(tab.url);

@@ -3,9 +3,11 @@
 const toast = document.getElementById('toast');
 
 chrome.storage.local.get({
-  exceptions: []
-}, ({exceptions}) => {
-  document.getElementById('exceptions').value = exceptions.join(', ');
+  'exceptions': [],
+  'confirm-delete': true
+}, prefs => {
+  document.getElementById('exceptions').value = prefs.exceptions.join(', ');
+  document.getElementById('confirm-delete').checked = prefs['confirm-delete'];
 });
 
 document.getElementById('save').addEventListener('click', () => {
@@ -18,7 +20,10 @@ document.getElementById('save').addEventListener('click', () => {
       return s.trim();
     }).filter((h, i, l) => h && l.indexOf(h) === i);
   document.getElementById('exceptions').value = exceptions.join(', ');
-  chrome.storage.local.set({exceptions}).then(() => {
+  chrome.storage.local.set({
+    exceptions,
+    'confirm-delete': document.getElementById('confirm-delete').checked
+  }).then(() => {
     toast.textContent = 'Options saved';
     setTimeout(() => toast.textContent = '', 750);
   });
