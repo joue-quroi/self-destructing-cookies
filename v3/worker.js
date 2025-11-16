@@ -79,7 +79,6 @@ self.match = (list, href) => {
       const pattern = new URLPattern(s.startsWith('{') ? JSON.parse(s) : {
         hostname: s
       });
-      console.log(pattern, href, pattern.test(href));
       if (pattern.test(href)) {
         return true;
       }
@@ -209,7 +208,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           console.error(`Failed to delete cookie: "${cookie.name}" for "${cookieUrl}". `, e);
         }
       }
-      console.log(n);
       notify('Total number of deleted cookies: ' + n);
     }).catch(e => {
       console.error(e);
@@ -223,26 +221,33 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
   else if (cmd.startsWith('exception-list-')) {
     if (tab.url.startsWith('http')) {
-      try {
-        const terms = [];
-        terms.push((new URL(tab.url)).hostname);
-        if (cmd === 'exception-list-domain') {
-          terms.push(`{"hostname": "*.${tldjs.getDomain(tab.url)}"}`);
-        }
-
-        chrome.storage.local.get({
-          exceptions: []
-        }, prefs => {
+      // find all existing matching rules
+      chrome.storage.local.get({
+        exceptions: []
+      }, prefs => {
+        try {
           const ns = [];
-          for (const term of terms) {
-            const n = prefs.exceptions.indexOf(term);
-            if (n !== -1) {
-              ns.push(n);
+          prefs.exceptions.forEach((rule, n) => {
+            try {
+              const pattern = new URLPattern(rule.startsWith('{') ? JSON.parse(rule) : {
+                hostname: rule
+              });
+              if (pattern.test(tab.url)) {
+                ns.push(n);
+              }
             }
-          }
+            catch (e) {}
+          });
+          // there is no matching rule
           if (ns.length === 0) {
-            prefs.exceptions.push(...terms);
-            notify(`"${terms.join(', ')}" are added to the exception list`);
+            if (cmd === 'exception-list-domain') {
+              prefs.exceptions.push(`{"hostname": "*.${tldjs.getDomain(tab.url)}"}`);
+            }
+            else {
+              prefs.exceptions.push((new URL(tab.url)).hostname);
+            }
+
+            notify(`One new rule is added to the exception list`);
           }
           else {
             ns.reverse();
@@ -250,15 +255,15 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
               prefs.exceptions.splice(n, 1);
             }
 
-            notify(`"${terms.join(', ')}" are removed from the exception list`);
+            notify(`${ns.length} rules ${ns.length < 2 ? 'is' : 'are'} removed from the exception list`);
           }
           chrome.storage.local.set(prefs);
-        });
-      }
-      catch (e) {
-        console.error(e);
-        notify(e);
-      }
+        }
+        catch (e) {
+          console.error(e);
+          notify(e);
+        }
+      });
     }
     else {
       notify(tab.url + ' is not supported');
@@ -267,16 +272,20 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 /* toggle */
-chrome.action.onClicked.addListener(() => chrome.storage.local.get({
-  enabled: true
-}, prefs => chrome.storage.local.set({
-  enabled: !prefs.enabled
-})));
-{
-  const changed = () => chrome.storage.local.get({
-    mode: 'tabs',
+chrome.action.onClicked.addListener(async () => {
+  const prefs = await chrome.storage.local.get({
     enabled: true
-  }, prefs => {
+  });
+  chrome.storage.local.set({
+    enabled: !prefs.enabled
+  });
+});
+{
+  const changed = async () => {
+    const prefs = await chrome.storage.local.get({
+      mode: 'tabs',
+      enabled: true
+    });
     if (prefs.enabled) {
       self.button.print(`Extension is active on "${prefs.mode}" mode`);
       self.button.icon('active');
@@ -285,7 +294,8 @@ chrome.action.onClicked.addListener(() => chrome.storage.local.get({
       self.button.print(`Extension is disabled`);
       self.button.icon('disabled');
     }
-  });
+  };
+
   chrome.runtime.onInstalled.addListener(changed);
   chrome.runtime.onStartup.addListener(changed);
   chrome.storage.onChanged.addListener(ps => {

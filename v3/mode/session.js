@@ -36,18 +36,19 @@ const session = o => {
 };
 
 {
-  const check = () => chrome.storage.local.get({
-    mode: 'tabs', // mode: session, tabs
-    enabled: true
-  }, prefs => {
+  const check = async () => {
+    const prefs = await chrome.storage.local.get({
+      mode: 'tabs', // mode: session, tabs
+      enabled: true
+    });
     chrome.cookies.onChanged.removeListener(session);
 
     if (prefs.enabled && prefs.mode === 'session') {
       chrome.cookies.onChanged.addListener(session);
     }
-  });
-  chrome.runtime.onInstalled.addListener(check);
-  chrome.runtime.onStartup.addListener(check);
+  };
+
+  check();
   chrome.storage.onChanged.addListener(ps => {
     if (ps.enabled || ps.mode) {
       check();

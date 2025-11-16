@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "name": "Self-Destructing Cookies",
   "description": "Delete cookies when browser is closed or once the tab is closed to prevent tracking",
   "permissions": [
